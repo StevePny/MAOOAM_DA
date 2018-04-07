@@ -41,7 +41,7 @@ endif
 ifeq ($(COMPILER),gfortran)
   #Derive gfortran version from gcc version and check if >=4.6.0.
   GVERSION := $(shell gcc -dumpversion)
-  GE40600 := $(shell expr `gcc -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 40600)
+  GE40600 := $(shell expr `gcc -dumpversion | cut -f1,2 -d.` \>= 4.6)
   
   ifeq ($(COMPILER),gfortran)
     ifeq ($(GE40600), 0)
