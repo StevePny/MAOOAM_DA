@@ -71,7 +71,10 @@ MODULE params
   REAL(KIND=8) :: dt        !< Integration time step
   REAL(KIND=8) :: tw        !< Write all variables every tw time units
   LOGICAL :: writeout       !< Write to file boolean
-  
+
+  REAL(KIND=8) :: coupling_thermo
+  REAL(KIND=8) :: coupling_motion
+
   INTEGER :: nboc   !< Number of atmospheric blocks
   INTEGER :: nbatm  !< Number of oceanic blocks
   INTEGER :: natm=0 !< Number of atmospheric basis functions
@@ -87,7 +90,8 @@ CONTAINS
 
 
   !> Read the basic parameters and mode selection from the namelist.
-  SUBROUTINE init_nml
+  SUBROUTINE init_nml(sim_id)
+    CHARACTER(len=3), OPTIONAL :: sim_id
     INTEGER :: AllocStat
 
     NAMELIST /aoscale/  scale,f0,n,rra,phi0_npi
@@ -102,7 +106,11 @@ CONTAINS
 
     NAMELIST /int_params/ t_trans,t_run,dt,tw,writeout
 
-    OPEN(8, file="params.nml", status='OLD', recl=80, delim='APOSTROPHE')
+    IF (PRESENT(sim_id)) THEN
+        OPEN(8, file="params/params_" // sim_id // ".nml", status='OLD', recl=80, delim='APOSTROPHE')
+    ELSE
+        OPEN(8, file="params.nml", status='OLD', recl=80, delim='APOSTROPHE')
+    END IF
 
     READ(8,nml=aoscale)
     READ(8,nml=oparams)
@@ -128,11 +136,17 @@ CONTAINS
 
   END SUBROUTINE init_nml
 
-  !> Parameters initialisation routine 
-  SUBROUTINE init_params
+  !> Parameters initialisation routine
+  SUBROUTINE init_params(sim_id)
+    CHARACTER(len=3), OPTIONAL :: sim_id
     INTEGER, DIMENSION(2) :: s
     INTEGER :: i
-    CALL init_nml
+
+    IF (PRESENT(sim_id)) THEN
+        CALL init_nml(sim_id)
+    ELSE
+        CALL init_nml
+    END IF
 
     !---------------------------------------------------------!
     !                                                         !
@@ -160,6 +174,7 @@ CONTAINS
     !                                                         !
     !---------------------------------------------------------!
 
+    d=coupling_motion*d
     pi=dacos(-1.D0)
     L=scale/pi
     phi0=phi0_npi*pi
@@ -168,8 +183,9 @@ CONTAINS
     betp=L/rra*cos(phi0)/sin(phi0)
     rp=r/f0
     dp=d/f0
-    kd=k*2
+    kd=coupling_motion*k*2
     kdp=kp
+    lambda=coupling_thermo*lambda
 
     !-----------------------------------------------------!
     !                                                     !
@@ -183,8 +199,8 @@ CONTAINS
     Lpa=lambda/(Ga*f0)
     sBpo=4*sB*To0**3/(Go*f0) ! long wave radiation lost by ocean to atmosphere space
     sBpa=8*epsa*sB*Ta0**3/(Go*f0) ! long wave radiation from atmosphere absorbed by ocean
-    LSBpo=2*epsa*sB*To0**3/(Ga*f0) ! long wave radiation from ocean absorbed by atmosphere
-    LSBpa=8*epsa*sB*Ta0**3/(Ga*f0) ! long wave radiation lost by atmosphere to space & ocea
+    LSBpo=coupling_thermo*2*epsa*sB*To0**3/(Ga*f0) ! long wave radiation from ocean absorbed by atmosphere
+    LSBpa=coupling_thermo*8*epsa*sB*Ta0**3/(Ga*f0) ! long wave radiation lost by atmosphere to space & ocea
 
 
   END SUBROUTINE init_params

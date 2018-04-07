@@ -96,10 +96,10 @@ test_aotensor.test: test_aotensor
 	$(COMPILER) $(LD_FLAGS) $(COMPILER_FLAGS) -c $<
 
 %.o: %.f90 $(MODULES)
-	$(COMPILER) $(LD_FLAGS) $(COMPILER_FLAGS) -c $<
+	$(COMPILER)  $(COMPILER_FLAGS) -c $< $(LD_FLAGS)
 
 %: %.o $(MODULE_OBJECTS)
-	$(COMPILER) $(LD_FLAGS) $(COMPILER_FLAGS) $^ -o $@ 
+	$(COMPILER)  $(COMPILER_FLAGS) $^ -o $@ $(LD_FLAGS)
 
 inprod_analytic.mod: params.mod
 aotensor_def.mod: tensor.mod inprod_analytic.mod

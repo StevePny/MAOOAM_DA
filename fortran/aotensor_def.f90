@@ -198,11 +198,16 @@ CONTAINS
   !> @remark This procedure will also call params::init_params() and inprod_analytic::init_inprod() .
   !> It will finally call inprod_analytic::deallocate_inprod() to remove the inner products, which are not needed
   !> anymore at this point.
-  SUBROUTINE init_aotensor
+  SUBROUTINE init_aotensor(sim_id)
+    CHARACTER(len=3), OPTIONAL :: sim_id
     INTEGER :: i
-    INTEGER :: AllocStat 
+    INTEGER :: AllocStat
 
-    CALL init_params  ! Iniatialise the parameter
+    IF (PRESENT(sim_id)) THEN
+        CALL init_params(sim_id)  ! Initialise the parameter
+    ELSE
+        CALL init_params  ! Initialise the parameter
+    END IF
 
     CALL init_inprod  ! Initialise the inner product tensors
 
@@ -228,6 +233,3 @@ CONTAINS
 
   END SUBROUTINE init_aotensor
 END MODULE aotensor_def
-      
-
-
