@@ -4,9 +4,9 @@
 !> Fortran 90 implementation of the modular arbitrary-order ocean-atmosphere
 !> model MAOOAM computing the Lyapunov spectrum.
 !
-!> @copyright                                                               
+!> @copyright
 !> 2016 Lesley De Cruz, Sebastian Schubert & Jonathan Demaeyer.
-!> See LICENSE.txt for license information.                                  
+!> See LICENSE.txt for license information.
 !
 !---------------------------------------------------------------------------!
 
@@ -29,13 +29,16 @@ PROGRAM maooam_lyap
   REAL(KIND=8) :: t_up
   INTEGER :: IndexBen,WRSTAT
   CHARACTER(LEN=19) :: FMTX
+  CHARACTER(LEN=3) :: sim_id
 
   PRINT*, 'Model MAOOAM v1.0'
   PRINT*, '      - with computation of the Lyapunov spectrum'
   PRINT*, 'Loading information...'
 
-  CALL init_aotensor    ! Compute the tensors
-  CALL init_tltensor   
+  CALL get_command_argument(1, sim_id)
+
+  CALL init_aotensor(sim_id)    ! Compute the tensors
+  CALL init_tltensor
   CALL load_IC          ! Load the initial condition
 
   CALL init_integrator        ! Initialize the integrator
@@ -89,7 +92,7 @@ PROGRAM maooam_lyap
   IF (writeout) CLOSE(11)
 
   IF (writeout) THEN
-     OPEN(10,file='mean_lyapunov.dat')
+     OPEN(10,file='mean_lyapunov_' // sim_id // '.dat')
      lyapunov=lyap_mean()
      WRITE(10,*) 'mean',lyapunov(1:ndim)
      lyapunov=lyap_var()
