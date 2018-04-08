@@ -108,6 +108,7 @@ CONTAINS
     NAMELIST /toparams/ Go,Co,To0
     NAMELIST /taparams/ Ga,Ca,epsa,Ta0
     NAMELIST /otparams/ sc,lambda,RR,sB
+    NAMELIST /cparams/  coupling_thermo, coupling_motion
 
     NAMELIST /modeselection/ oms,ams
     NAMELIST /numblocs/ nboc,nbatm
@@ -127,6 +128,7 @@ CONTAINS
     READ(8,nml=toparams)
     READ(8,nml=taparams)
     READ(8,nml=otparams)
+    READ(8,nml=cparams)
 
     CLOSE(8)
 
