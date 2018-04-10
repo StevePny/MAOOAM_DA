@@ -208,8 +208,8 @@ CONTAINS
     Lpo=lambda/(Go*f0)
     Cpa=Ca/(Ga*f0) * RR/(f0**2*L**2)/2 ! Cpa acts on psi1-psi3, not on theta
     Lpa=lambda/(Ga*f0)
-    sBpo=4*sB*To0**3/(Go*f0) ! long wave radiation lost by ocean to atmosphere space
-    sBpa=8*epsa*sB*Ta0**3/(Go*f0) ! long wave radiation from atmosphere absorbed by ocean
+    sBpo=coupling_thermo*4*sB*To0**3/(Go*f0) ! long wave radiation lost by ocean to atmosphere space
+    sBpa=coupling_thermo*8*epsa*sB*Ta0**3/(Go*f0) ! long wave radiation from atmosphere absorbed by ocean
     LSBpo=coupling_thermo*2*epsa*sB*To0**3/(Ga*f0) ! long wave radiation from ocean absorbed by atmosphere
     LSBpa=coupling_thermo*8*epsa*sB*Ta0**3/(Ga*f0) ! long wave radiation lost by atmosphere to space & ocea
     nuap=nua/(f0*L**2)
