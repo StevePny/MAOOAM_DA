@@ -48,8 +48,8 @@ PROGRAM maooam_lyap
   t_up=dt/t_trans*100.D0
 
   IF (writeout) THEN
-     OPEN(10,file='evol_field.dat')
-     OPEN(11,file='lyapunov_exponents.dat',status='replace',form='UNFORMATTED',access='DIRECT',recl=8*ndim)
+     OPEN(10,file='evol_field_' // sim_id // '.dat')
+     OPEN(11,file='lyapunov_exponents_' // sim_id // '.dat',status='replace',form='UNFORMATTED',access='DIRECT',recl=8*ndim)
   END IF
 
   ALLOCATE(X(0:ndim),Xnew(0:ndim),prop_buf(ndim,ndim))

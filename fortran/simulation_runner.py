@@ -1,3 +1,6 @@
+"""
+By Eviatar Bach, see https://github.com/eviatarbach/simulation_runner
+"""
 import subprocess
 import itertools
 import time
