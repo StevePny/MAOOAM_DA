@@ -41,14 +41,14 @@ class Sequential(_Namer):
         return str(self.count).zfill(self.zfill)
 
 
-def run_simulation(sweep_id, command, config_path, template_path=None,
+def run_simulation(command, config_path, template_path=None,
                    template_text=None, single_parameters={},
                    sweep_parameters={}, naming=String, build=False, run=True,
                    verbose=True, delay=False):
     '''
     EXAMPLES:
 
-      >>> run_simulation('test', 'cat {sim_id}.txt', '{sim_id}.txt', template_text='Hello ${x*10}\n', sweep_parameters={'x': (1, 2, 3)}, verbose=False)
+      >>> run_simulation('cat {sim_id}.txt', '{sim_id}.txt', template_text='Hello ${x*10}\n', sweep_parameters={'x': (1, 2, 3)}, verbose=False)
       Hello 10
       Hello 20
       Hello 30
