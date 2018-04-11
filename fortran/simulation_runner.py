@@ -7,16 +7,14 @@ import time
 import math
 import operator
 from functools import reduce
-from abc import ABC, abstractmethod
 
 from mako.template import Template
 
 
-class _Namer(ABC):
+class _Namer:
     def __init__(self, **kwargs):
         pass
 
-    @abstractmethod
     def next(self, keys, param_set):
         pass
 
