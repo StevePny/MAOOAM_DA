@@ -9,7 +9,7 @@
   T_RUN = 7.7D5         !  length of trajectory on the attractor (e.g. 5.D8)
   DT = 1.D-2           !  the time step
   WRITEOUT = T         !  write out all variables every tw time units
-  TW = 10.D0           !
+  TW = 100.D0           !
 &END
 
 &LYAP_PARAMS

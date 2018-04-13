@@ -20,7 +20,7 @@ endif
 IFORT_COMPILER_FLAGS = -assume byterecl -O2
 IFORT_LD_FLAGS = -mkl
 GCC_COMPILER_FLAGS = -O2 -Wall
-GCC_LD_FLAGS = -llapack -lblas
+GCC_LD_FLAGS = -L${LAPACKLIB} -llapack -lblas
 # Debug Case:
 IFORT_COMPILER_FLAGS_DBG = -O0 -check all -traceback -fpe0 -check bounds -debug all -check uninit -ftrapuv -assume byterecl
 IFORT_LD_FLAGS_DBG = -llapack -lblas
@@ -95,13 +95,12 @@ test_aotensor.test: test_aotensor
 	diff tests/$<.out tests/$<.ref && echo PASS: $@ || echo FAIL: $@
 
 %.mod: %.f90
-	$(COMPILER) $(COMPILER_FLAGS) -c $< $(LD_FLAGS) 
-
+	$(COMPILER) $(COMPILER_FLAGS) $(LD_FLAGS) -c $<
 %.o: %.f90 $(MODULES)
-	$(COMPILER) $(COMPILER_FLAGS) -c $< $(LD_FLAGS) 
+	$(COMPILER) $(COMPILER_FLAGS) $(LD_FLAGS) -c $<
 
 %: %.o $(MODULE_OBJECTS)
-	$(COMPILER) $(COMPILER_FLAGS) $^ -o $@ $(LD_FLAGS) 
+	$(COMPILER) $(COMPILER_FLAGS) $(LD_FLAGS) $^ -o $@
 
 inprod_analytic$(ST).mod: params.mod util.mod
 aotensor_def.mod: tensor.mod inprod_analytic$(ST).mod
