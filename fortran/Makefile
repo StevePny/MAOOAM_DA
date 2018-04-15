@@ -25,7 +25,7 @@ GCC_LD_FLAGS = -L${LAPACKLIB} -llapack -lblas
 IFORT_COMPILER_FLAGS_DBG = -O0 -check all -traceback -fpe0 -check bounds -debug all -check uninit -ftrapuv -assume byterecl
 IFORT_LD_FLAGS_DBG = -llapack -lblas
 GCC_COMPILER_FLAGS_DBG = -g -O0 -fbounds-check -Wall -Wextra -Wconversion -pedantic -ffpe-trap=zero,overflow,underflow 
-GCC_LD_FLAGS_DBG = -llapack -lblas
+GCC_LD_FLAGS_DBG = -L${LAPACKLIB} -llapack -lblas
 
 
 SHELL = /bin/sh
@@ -68,7 +68,7 @@ endif
 .SUFFIXES:
 .SUFFIXES: .f90 .o .mod .out .test
 
-PROGRAMS = maooam_lyap maooam test_tl_ad maooam_lyap maooam_lyap_div tr_jacob_mat
+PROGRAMS = maooam_lyap maooam_lyap_uncoupled maooam test_tl_ad maooam_lyap maooam_lyap_div tr_jacob_mat
 
 MODULES = util.mod params.mod inprod_analytic$(ST).mod aotensor_def.mod ic_def.mod $(INTEGRATOR).mod stat.mod tensor.mod tl_ad_tensor.mod $(TL_AD_INTEGRATOR).mod icdelta_def.mod lyap_vectors.mod lyap_stat.mod 
 MODULE_OBJECTS = $(MODULES:.mod=.o)
