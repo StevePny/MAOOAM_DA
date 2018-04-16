@@ -177,17 +177,17 @@ CONTAINS
     CALL DORM2R("r","n",ndim,ndim,ndim,ensemble_atm,ndim,tau_atm,prop_atm,ndim,work2,info)
     ! prop contains prop*ensemble but QR decomposed(tau is needed for that as
     ! well !) => copy to ensemble 
-     prop_atm(2*natm:ndim, 2*natm:ndim) = 0.D0
-     prop_atm(2*natm:ndim, 1:2*natm) = 0.D0
-     prop_atm(1:2*natm, 2*natm:ndim) = 0.D0
+     prop_atm(2*natm+1:ndim, 2*natm+1:ndim) = 0.D0
+     prop_atm(2*natm+1:ndim, 1:2*natm) = 0.D0
+     prop_atm(1:2*natm, 2*natm+1:ndim) = 0.D0
     ensemble_atm=prop_atm
 
     ! From here on ensemble contains the new information prop*ensemble
     CALL DGEQRF(ndim,ndim,ensemble_atm,ndim,tau_atm,work,lwork, info) ! qr decomposition
     
-     ensemble_atm(2*natm:ndim, 2*natm:ndim) = 0.D0
-     ensemble_atm(2*natm:ndim, 1:2*natm) = 0.D0
-     ensemble_atm(1:2*natm, 2*natm:ndim) = 0.D0
+     ensemble_atm(2*natm+1:ndim, 2*natm+1:ndim) = 0.D0
+     ensemble_atm(2*natm+1:ndim, 1:2*natm) = 0.D0
+     ensemble_atm(1:2*natm, 2*natm+1:ndim) = 0.D0
 
     DO k=1,ndim
       loclyap_atm(k)=log(abs(ensemble_atm(k,k)))/rescaling_time
@@ -211,15 +211,15 @@ CONTAINS
     ! prop contains prop*ensemble but QR decomposed(tau is needed for that as
     ! well !) => copy to ensemble 
      prop_ocn(1:2*natm, 1:2*natm) = 0.D0
-     prop_ocn(2*natm:ndim, 1:2*natm) = 0.D0
-     prop_ocn(1:2*natm, 2*natm:ndim) = 0.D0
+     prop_ocn(2*natm+1:ndim, 1:2*natm) = 0.D0
+     prop_ocn(1:2*natm, 2*natm+1:ndim) = 0.D0
     ensemble_ocn=prop_ocn
 
     ! From here on ensemble contains the new information prop*ensemble
     CALL DGEQRF(ndim,ndim,ensemble_ocn,ndim,tau_ocn,work,lwork, info) ! qr decomposition
      ensemble_ocn(1:2*natm, 1:2*natm) = 0.D0
-     ensemble_ocn(2*natm:ndim, 1:2*natm) = 0.D0
-     ensemble_ocn(1:2*natm, 2*natm:ndim) = 0.D0
+     ensemble_ocn(2*natm+1:ndim, 1:2*natm) = 0.D0
+     ensemble_ocn(1:2*natm, 2*natm+1:ndim) = 0.D0
    
     DO k=1,ndim
       loclyap_ocn(k)=log(abs(ensemble_ocn(k,k)))/rescaling_time

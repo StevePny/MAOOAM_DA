@@ -68,28 +68,32 @@ PROGRAM maooam_lyap
       prop_buf_atm(ndim,ndim),prop_buf_ocn(ndim,ndim),err_atm(1:2*natm),&
       err_ocn(1:2*noc))
   X = IC
+
+  DO j=1,2*natm
+    err_atm(j) = 1D-4*gasdev(idum1)
+  END DO
+  DO j=1,2*noc
+    err_ocn(j) = 1D-4*gasdev(idum1)
+  END DO
+
   X_atm = IC
   X_ocn = IC
 
+  X_atm(2*natm+1:ndim) = X(2*natm+1:ndim) + err_ocn
+  X_ocn(1:2*natm) = X(1:2*natm) + err_atm
 
   PRINT*, 'Starting the transient time evolution... t_trans = ',t_trans
 
   DO WHILE (t<t_trans)
-      DO j=0,2*natm
-        err_atm(j) = 0*gasdev(idum1)
-      END DO
-      DO j=0,2*noc
-        err_ocn(j) = 0*gasdev(idum1)
-      END DO
      CALL step(X,t,dt,Xnew)
 
      t = t - dt
-     X_atm(2*natm:ndim) = X(2*natm:ndim) + err_ocn
+     X_atm(2*natm+1:ndim) = X(2*natm+1:ndim)
      CALL step(X_atm, t, dt, Xnew_atm)
      X_atm = Xnew_atm
 
      t = t - dt
-     X_ocn(1:2*natm) = X(1:2*natm) + err_atm
+     X_ocn(1:2*natm) = X(1:2*natm)
      CALL step(X_ocn, t, dt, Xnew_ocn)
      X_ocn = Xnew_ocn
 
@@ -107,30 +111,24 @@ PROGRAM maooam_lyap
   t_up=dt/t_run*100.D0
 
   DO WHILE (t<t_run)
-      DO j=1,2*natm
-        err_atm(j) = 0*gasdev(idum1)
-      END DO
-      DO j=1,2*noc
-        err_ocn(j) = 0*gasdev(idum1)
-      END DO
      CALL prop_step(X,prop_buf,t,dt,Xnew,.false.) ! Obtains propagator prop_buf at X
      CALL multiply_prop(prop_buf) ! Multiplies prop_buf with prop
 
-     X_atm(2*natm:ndim) = X(2*natm:ndim) + err_ocn
+     X_atm(2*natm+1:ndim) = X(2*natm+1:ndim)
      t = t - dt
      CALL prop_step(X_atm,prop_buf_atm,t,dt,Xnew_atm,.false.) ! Obtains propagator prop_buf at X
-     prop_buf_atm(2*natm:ndim, 2*natm:ndim) = 0.D0
-     prop_buf_atm(2*natm:ndim, 1:2*natm) = 0.D0
-     prop_buf_atm(1:2*natm, 2*natm:ndim) = 0.D0
+     prop_buf_atm(2*natm+1:ndim, 2*natm+1:ndim) = 0.D0
+     prop_buf_atm(2*natm+1:ndim, 1:2*natm) = 0.D0
+     prop_buf_atm(1:2*natm, 2*natm+1:ndim) = 0.D0
      CALL multiply_prop_atm(prop_buf_atm) ! Multiplies prop_buf with prop
      X_atm = Xnew_atm
 
-     X_ocn(1:2*natm) = X(1:2*natm) + err_atm
+     X_ocn(1:2*natm) = X(1:2*natm)
      t = t - dt
      CALL prop_step(X_ocn,prop_buf_ocn,t,dt,Xnew_ocn,.false.) ! Obtains propagator prop_buf at X
      prop_buf_ocn(1:2*natm, 1:2*natm) = 0.D0
-     prop_buf_ocn(2*natm:ndim, 1:2*natm) = 0.D0
-     prop_buf_ocn(1:2*natm, 2*natm:ndim) = 0.D0
+     prop_buf_ocn(2*natm+1:ndim, 1:2*natm) = 0.D0
+     prop_buf_ocn(1:2*natm, 2*natm+1:ndim) = 0.D0
      CALL multiply_prop_ocn(prop_buf_ocn) ! Multiplies prop_buf with prop
      X_ocn = Xnew_ocn
 
@@ -160,7 +158,7 @@ PROGRAM maooam_lyap
   IF (writeout) CLOSE(11)
 
   IF (writeout) THEN
-     OPEN(10,file='mean_lyapunov_' // sim_id // '.dat')
+     OPEN(10,file='mean_lyapunov_both_' // sim_id // '.dat')
      lyapunov=lyap_mean()
      WRITE(10,*) 'mean',lyapunov(1:ndim)
      lyapunov=lyap_var()
