@@ -26,6 +26,8 @@ PROGRAM maooam_lyap
   IMPLICIT NONE
 
   REAL(KIND=8), DIMENSION(:), ALLOCATABLE :: X, X_atm, X_ocn          !< State variable in the model
+  REAL(KIND=8), DIMENSION(:), ALLOCATABLE :: err_atm
+  REAL(KIND=8), DIMENSION(:), ALLOCATABLE :: err_ocn
   REAL(KIND=8), DIMENSION(:), ALLOCATABLE :: Xnew, Xnew_atm, Xnew_ocn       !< Updated state variable
   REAL(KIND=8), DIMENSION(:,:), ALLOCATABLE :: prop_buf, prop_buf_atm, prop_buf_ocn !< Buffer for the propagator
   REAL(KIND=8) :: t=0.D0                                !< Time variable
@@ -63,24 +65,35 @@ PROGRAM maooam_lyap
 
   ALLOCATE(X(0:ndim),Xnew(0:ndim),X_atm(0:ndim),Xnew_atm(0:ndim),&
       X_ocn(0:ndim),Xnew_ocn(0:ndim),prop_buf(ndim,ndim),&
-      prop_buf_atm(ndim,ndim),prop_buf_ocn(ndim,ndim))
+      prop_buf_atm(ndim,ndim),prop_buf_ocn(ndim,ndim),err_atm(1:2*natm),&
+      err_ocn(1:2*noc))
   X = IC
 
   X_atm = IC
   X_ocn = IC
 
+  X_atm(2*natm+1:ndim) = X(2*natm+1:ndim)
+  X_ocn(1:2*natm) = X(1:2*natm)
+
   PRINT*, 'Starting the transient time evolution... t_trans = ',t_trans
 
   DO WHILE (t<t_trans)
+      DO j=1,2*natm
+        err_atm(j) = 1D-6*gasdev(idum1)
+      END DO
+      DO j=1,2*noc
+        err_ocn(j) = 1D-6*gasdev(idum1)
+      END DO
+
      CALL step(X,t,dt,Xnew)
 
      t = t - dt
-     X_atm(2*natm+1:ndim) = X(2*natm+1:ndim)
+     X_atm(2*natm+1:ndim) = X(2*natm+1:ndim) + err_ocn
      CALL step(X_atm, t, dt, Xnew_atm)
      X_atm = Xnew_atm
 
      t = t - dt
-     X_ocn(1:2*natm) = X(1:2*natm)
+     X_ocn(1:2*natm) = X(1:2*natm) + err_atm
      CALL step(X_ocn, t, dt, Xnew_ocn)
      X_ocn = Xnew_ocn
 
@@ -98,10 +111,17 @@ PROGRAM maooam_lyap
   t_up=dt/t_run*100.D0
 
   DO WHILE (t<t_run)
+      DO j=1,2*natm
+        err_atm(j) = 1D-6*gasdev(idum1)
+      END DO
+      DO j=1,2*noc
+        err_ocn(j) = 1D-6*gasdev(idum1)
+      END DO
+
      CALL prop_step(X,prop_buf,t,dt,Xnew,.false.) ! Obtains propagator prop_buf at X
      CALL multiply_prop(prop_buf) ! Multiplies prop_buf with prop
 
-     X_atm(2*natm+1:ndim) = X(2*natm+1:ndim)
+     X_atm(2*natm+1:ndim) = X(2*natm+1:ndim) + err_ocn
      t = t - dt
      CALL prop_step(X_atm,prop_buf_atm,t,dt,Xnew_atm,.false.) ! Obtains propagator prop_buf at X
      prop_buf_atm(2*natm+1:ndim, 2*natm+1:ndim) = 0.D0
@@ -110,7 +130,7 @@ PROGRAM maooam_lyap
      CALL multiply_prop_atm(prop_buf_atm) ! Multiplies prop_buf with prop
      X_atm = Xnew_atm
 
-     X_ocn(1:2*natm) = X(1:2*natm)
+     X_ocn(1:2*natm) = X(1:2*natm) + err_atm
      t = t - dt
      CALL prop_step(X_ocn,prop_buf_ocn,t,dt,Xnew_ocn,.false.) ! Obtains propagator prop_buf at X
      prop_buf_ocn(1:2*natm, 1:2*natm) = 0.D0
@@ -173,3 +193,62 @@ PROGRAM maooam_lyap
   END IF
 
 END PROGRAM maooam_lyap
+
+FUNCTION gasdev(idum)
+  INTEGER :: idum
+  REAL(KIND=8) ::  gasdev,ran2
+  !    USES ran2
+  INTEGER :: iset
+  REAL(KIND=8) :: fac,gset,rsq,v1,v2
+  SAVE iset,gset
+  DATA iset/0/
+  if (idum.lt.0) iset=0
+  if (iset.eq.0) then
+1    v1=2.D0*ran2(idum)-1.
+     v2=2.D0*ran2(idum)-1.
+     rsq=v1**2+v2**2
+     if (rsq.ge.1.D0.or.rsq.eq.0.D0) goto 1
+     fac=sqrt(-2.*log(rsq)/rsq)
+     gset=v1*fac
+     gasdev=v2*fac
+     iset=1
+  else
+     gasdev=gset
+     iset=0
+  endif
+  return
+END FUNCTION gasdev
+
+FUNCTION ran2(idum)
+  INTEGER :: idum,IM1,IM2,IMM1,IA1,IA2,IQ1,IQ2,IR1,IR2,NTAB,NDIV
+  REAL(KIND=8) :: ran2,AM,EPS,RNMX
+  PARAMETER (IM1=2147483563,IM2=2147483399,AM=1.D0/IM1,IMM1=IM1-1&
+       &,IA1=40014,IA2=40692,IQ1=53668,IQ2=52774,IR1=12211,IR2&
+       &=3791,NTAB=32,NDIV=1+IMM1/NTAB,EPS=1.2D-7,RNMX=1.D0-EPS)
+  INTEGER :: idum2,j,k,iv(NTAB),iy
+  SAVE iv,iy,idum2
+  DATA idum2/123456789/, iv/NTAB*0/, iy/0/
+  if (idum.le.0) then
+     idum=max(-idum,1)
+     idum2=idum
+     do j=NTAB+8,1,-1
+        k=idum/IQ1
+        idum=IA1*(idum-k*IQ1)-k*IR1
+        if (idum.lt.0) idum=idum+IM1
+        if (j.le.NTAB) iv(j)=idum
+     enddo
+     iy=iv(1)
+  endif
+  k=idum/IQ1
+  idum=IA1*(idum-k*IQ1)-k*IR1
+  if (idum.lt.0) idum=idum+IM1
+  k=idum2/IQ2
+  idum2=IA2*(idum2-k*IQ2)-k*IR2
+  if (idum2.lt.0) idum2=idum2+IM2
+  j=1+iy/NDIV
+  iy=iv(j)-idum2
+  iv(j)=idum
+  if (iy.lt.1) iy=iy+IMM1
+  ran2=min(AM*iy,RNMX)
+  return
+END FUNCTION ran2
