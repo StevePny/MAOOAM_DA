@@ -52,15 +52,15 @@ PROGRAM maooam_lyap
 
   CALL init_integrator        ! Initialize the integrator
   CALL init_tl_ad_integrator  ! Initialize tangent linear integrator
-  CALL init_lyap              ! Initialize Lyapunov computation
-  CALL init_lyap_atm              ! Initialize Lyapunov computation
-  CALL init_lyap_ocn              ! Initialize Lyapunov computation
+
+  t_trans = 1.D3
   write(FMTX,'(A10,i3,A6)') '(F10.2,4x,',ndim,'E15.5)'
   t_up=dt/t_trans*100.D0
 
   IF (writeout) THEN
      OPEN(10,file='evol_field_' // sim_id // '.dat')
-     OPEN(11,file='lyapunov_exponents_' // sim_id // '.dat',status='replace',form='UNFORMATTED',access='DIRECT',recl=8*ndim)
+     OPEN(14,file='evol_field_atm_' // sim_id // '.dat')
+     OPEN(15,file='evol_field_ocn_' // sim_id // '.dat')
   END IF
 
   ALLOCATE(X(0:ndim),Xnew(0:ndim),X_atm(0:ndim),Xnew_atm(0:ndim),&
@@ -69,128 +69,51 @@ PROGRAM maooam_lyap
       err_ocn(1:2*noc))
   X = IC
 
+
+  DO j=1,2*natm
+    err_atm(j) = 1D-1*gasdev(idum1)
+  END DO
+  DO j=1,2*noc
+    err_ocn(j) = 1D-1*gasdev(idum1)
+  END DO
+
   X_atm = IC
   X_ocn = IC
 
-  X_atm(2*natm+1:ndim) = X(2*natm+1:ndim)
-  X_ocn(1:2*natm) = X(1:2*natm)
+  X_ocn(2*natm+1:ndim) = X_ocn(2*natm+1:ndim) + err_ocn
+  X_atm(1:2*natm) = X_atm(1:2*natm) + err_atm
 
   PRINT*, 'Starting the transient time evolution... t_trans = ',t_trans
 
   DO WHILE (t<t_trans)
-      DO j=1,2*natm
-        err_atm(j) = 1D-6*gasdev(idum1)
-      END DO
-      DO j=1,2*noc
-        err_ocn(j) = 1D-6*gasdev(idum1)
-      END DO
+
 
      CALL step(X,t,dt,Xnew)
 
      t = t - dt
-     X_atm(2*natm+1:ndim) = X(2*natm+1:ndim) + err_ocn
+     X_atm(2*natm+1:ndim) = X(2*natm+1:ndim)
      CALL step(X_atm, t, dt, Xnew_atm)
      X_atm = Xnew_atm
 
      t = t - dt
-     X_ocn(1:2*natm) = X(1:2*natm) + err_atm
+     X_ocn(1:2*natm) = X(1:2*natm)
      CALL step(X_ocn, t, dt, Xnew_ocn)
      X_ocn = Xnew_ocn
 
      X=Xnew
 
      IF (mod(t/t_trans*100.D0,0.1)<t_up) WRITE(*,'(" Progress ",F6.1," %",A,$)') t/t_trans*100.D0,char(13)
-  END DO
 
-  PRINT*, 'Starting the time evolution... t_run = ',t_run
-
-  CALL init_stat
-  CALL lyap_init_stat
-  t=0.D0
-  IndexBen=0
-  t_up=dt/t_run*100.D0
-
-  DO WHILE (t<t_run)
-      DO j=1,2*natm
-        err_atm(j) = 1D-6*gasdev(idum1)
-      END DO
-      DO j=1,2*noc
-        err_ocn(j) = 1D-6*gasdev(idum1)
-      END DO
-
-     CALL prop_step(X,prop_buf,t,dt,Xnew,.false.) ! Obtains propagator prop_buf at X
-     CALL multiply_prop(prop_buf) ! Multiplies prop_buf with prop
-
-     X_atm(2*natm+1:ndim) = X(2*natm+1:ndim) + err_ocn
-     t = t - dt
-     CALL prop_step(X_atm,prop_buf_atm,t,dt,Xnew_atm,.false.) ! Obtains propagator prop_buf at X
-     prop_buf_atm(2*natm+1:ndim, 2*natm+1:ndim) = 0.D0
-     prop_buf_atm(2*natm+1:ndim, 1:2*natm) = 0.D0
-     prop_buf_atm(1:2*natm, 2*natm+1:ndim) = 0.D0
-     CALL multiply_prop_atm(prop_buf_atm) ! Multiplies prop_buf with prop
-     X_atm = Xnew_atm
-
-     X_ocn(1:2*natm) = X(1:2*natm) + err_atm
-     t = t - dt
-     CALL prop_step(X_ocn,prop_buf_ocn,t,dt,Xnew_ocn,.false.) ! Obtains propagator prop_buf at X
-     prop_buf_ocn(1:2*natm, 1:2*natm) = 0.D0
-     prop_buf_ocn(2*natm+1:ndim, 1:2*natm) = 0.D0
-     prop_buf_ocn(1:2*natm, 2*natm+1:ndim) = 0.D0
-     CALL multiply_prop_ocn(prop_buf_ocn) ! Multiplies prop_buf with prop
-     X_ocn = Xnew_ocn
-
-     X=Xnew
-
-     IF (mod(t,rescaling_time)<dt) THEN
-        CALL  benettin_step ! Performs QR step with prop
-        CALL lyap_acc(loclyap)
-
-        CALL  benettin_step_atm ! Performs QR step with prop
-        CALL lyap_acc_atm(loclyap_atm)
-
-        CALL  benettin_step_ocn ! Performs QR step with prop
-        CALL lyap_acc_ocn(loclyap_ocn)
-     END IF
-     IF (mod(t,tw)<dt) THEN
-        CALL acc(X)
-        IF (writeout) WRITE(10,FMTX) t,X(1:ndim)
-        IndexBen=IndexBen+1
-        IF (writeout) WRITE(11,rec=IndexBen,iostat=WRSTAT) loclyap
-     END IF
-     IF (mod(t/t_run*100.D0,0.1)<t_up) WRITE(*,'(" Progress ",F6.1," %",A,$)') t/t_run*100.D0,char(13)
+    IF (writeout) WRITE(10,FMTX) t,X(1:ndim)
+    IF (writeout) WRITE(14,FMTX) t,X_atm(1:ndim)
+    IF (writeout) WRITE(15,FMTX) t,X_ocn(1:ndim)
   END DO
   PRINT*, 'Evolution finished.'
 
   IF (writeout) CLOSE(10)
   IF (writeout) CLOSE(11)
-
-  IF (writeout) THEN
-     OPEN(10,file='mean_lyapunov_both_stochastic_' // sim_id // '.dat')
-     lyapunov=lyap_mean()
-     WRITE(10,*) 'mean',lyapunov(1:ndim)
-     lyapunov=lyap_var()
-     WRITE(10,*) 'var',lyapunov(1:ndim)
-     CLOSE(10)
-     OPEN(12,file='mean_lyapunov_atm_stochastic_' // sim_id // '.dat')
-     lyapunov_atm=lyap_mean_atm()
-     WRITE(12,*) 'mean',lyapunov_atm(1:ndim)
-     lyapunov_atm=lyap_var_atm()
-     WRITE(12,*) 'var',lyapunov_atm(1:ndim)
-     CLOSE(12)
-     OPEN(13,file='mean_lyapunov_ocn_stochastic_' // sim_id // '.dat')
-     lyapunov_ocn=lyap_mean_ocn()
-     WRITE(13,*) 'mean',lyapunov_ocn(1:ndim)
-     lyapunov_ocn=lyap_var_ocn()
-     WRITE(13,*) 'var',lyapunov_ocn(1:ndim)
-  END IF
-
-  IF (writeout) THEN
-     OPEN(10,file='mean_field.dat')
-     X=mean()
-     WRITE(10,*) 'mean',X(1:ndim)
-     X=var()
-     WRITE(10,*) 'var',X(1:ndim)
-  END IF
+  IF (writeout) CLOSE(14)
+  IF (writeout) CLOSE(15)
 
 END PROGRAM maooam_lyap
 

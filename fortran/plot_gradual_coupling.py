@@ -9,7 +9,7 @@ sim_ids = dat[9, :].data
 thermo = dat[9, :]['coupling_thermo'].data
 
 for i, sim_id in enumerate(sim_ids):
-    lyap = open('mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
+    lyap = open('coupled/mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
     lyap = numpy.array(lyap.split('\n')[0].split()[1:], dtype='float')
     lyap *= 86400*1.032e-4
     plt.scatter(numpy.array([thermo[i]]*36) + numpy.random.rand(36)/30, lyap, c='black', s=5)
@@ -22,10 +22,10 @@ plt.clf()
 
 # Full thermo coupling, gradual momentum
 sim_ids = dat[:, 9].data
-thermo = dat[:, 9]['coupling_momentum'].data
+thermo = dat[:, 9]['coupling_motion'].data
 
 for i, sim_id in enumerate(sim_ids):
-    lyap = open('mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
+    lyap = open('coupled/mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
     lyap = numpy.array(lyap.split('\n')[0].split()[1:], dtype='float')
     lyap *= 86400*1.032e-4
     plt.scatter(numpy.array([thermo[i]]*36) + numpy.random.rand(36)/30, lyap, c='black', s=5)
@@ -38,10 +38,10 @@ plt.clf()
 
 # Gradual thermo, gradual momentum
 sim_ids = numpy.diag(dat)
-thermo = dat[:, 9]['coupling_momentum'].data
+thermo = dat[:, 9]['coupling_motion'].data
 
 for i, sim_id in enumerate(sim_ids):
-    lyap = open('mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
+    lyap = open('coupled/mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
     lyap = numpy.array(lyap.split('\n')[0].split()[1:], dtype='float')
     lyap *= 86400*1.032e-4
     plt.scatter(numpy.array([thermo[i]]*36) + numpy.random.rand(36)/30, lyap, c='black', s=5)
@@ -54,10 +54,10 @@ plt.clf()
 
 # Low thermo, gradual momentum
 sim_ids = dat[:, 0].data
-thermo = dat[:, 0]['coupling_momentum'].data
+thermo = dat[:, 0]['coupling_motion'].data
 
 for i, sim_id in enumerate(sim_ids):
-    lyap = open('mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
+    lyap = open('coupled/mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
     lyap = numpy.array(lyap.split('\n')[0].split()[1:], dtype='float')
     lyap *= 86400*1.032e-4
     plt.scatter(numpy.array([thermo[i]]*36) + numpy.random.rand(36)/30, lyap, c='black', s=5)
@@ -73,7 +73,7 @@ sim_ids = dat[0, :].data
 thermo = dat[0, :]['coupling_thermo'].data
 
 for i, sim_id in enumerate(sim_ids):
-    lyap = open('mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
+    lyap = open('coupled/mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
     lyap = numpy.array(lyap.split('\n')[0].split()[1:], dtype='float')
     lyap *= 86400*1.032e-4
     plt.scatter(numpy.array([thermo[i]]*36) + numpy.random.rand(36)/30, lyap, c='black', s=5)
@@ -89,7 +89,7 @@ mat = numpy.zeros((10, 10), dtype='int')
 for i in range(10):
     for j in range(10):
         sim_id = dat[i, j].data
-        lyap = open('mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
+        lyap = open('coupled/mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
         lyap = numpy.array(lyap.split('\n')[0].split()[1:], dtype='float')
         lyap *= 86400*1.032e-4
         mat[i, j] = sum(lyap > 0)
@@ -113,7 +113,7 @@ mat = numpy.zeros((10, 10), dtype='int')
 for i in range(10):
     for j in range(10):
         sim_id = dat[i, j].data
-        lyap = open('mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
+        lyap = open('coupled/mean_lyapunov_{sim_id}.dat'.format(sim_id=sim_id)).read()
         lyap = numpy.array(lyap.split('\n')[0].split()[1:], dtype='float')
         lyap *= 86400*1.032e-4
         mat[i, j] = sum(lyap > -0.02)
@@ -128,5 +128,5 @@ plt.colorbar(ticks=range(mat.min(), mat.max() + 1))
 plt.clim(mat.min() - 0.5, mat.max() + 0.5)
 plt.xlabel('Momentum coupling')
 plt.ylabel('Thermodynamic coupling')
-plt.title('Number of positive Lyapunov exponents')
+plt.title('Number of positive and neutral Lyapunov exponents')
 plt.savefig('gradual_grid_neutral.pdf', bbox_inches='tight')
