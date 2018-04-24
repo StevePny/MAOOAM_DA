@@ -66,17 +66,6 @@ CONTAINS
  !                                                     !
  !-----------------------------------------------------!
 
-  subroutine fixed_random()
-    implicit none
-    integer :: n
-    integer, dimension(:),allocatable :: i
-    call random_seed(size=n)
-    allocate(i(n))
-    i = (/318284865 , 1342403751,  1793158442  ,  58881076, -1554525256 , 1335159234,&
-        80185618,  -325596768,318284865 , 1342403751,  1793158442  ,  58881076 /)
-    print *, "seeding RNG as", i
-    call random_seed(put=i)
-  end subroutine fixed_random
 
   !> Initialize Lyapunov computation (possibly also vectors in later version)
   !> and initializes also a random orthogonal matrix for the matrix ensemble. 
@@ -91,7 +80,6 @@ CONTAINS
     lyapunov=0.0d0
     loclyap=0.0d0
     CALL init_one(prop)
-    !CALL fixed_random
     CALL random_number(ensemble)
     ensemble=2*(ensemble-0.5)
     CALL DGEQRF(ndim,ndim,ensemble,ndim,tau,work,lwork, info) ! qr decomposition

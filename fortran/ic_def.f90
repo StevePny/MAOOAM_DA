@@ -76,8 +76,8 @@ CONTAINS
            IC(0)=1.0d0
            WRITE(6,*) "*** IC.nml namelist written. Starting with initial condition in IC.nml !***"
          CASE ('read')
-           ! CALL init_random_seed()
-           CALL random_seed(put=seed)
+           CALL init_random_seed()
+           CALL random_seed(get=seed)
            IC(0)=1.0d0
            ! except IC(0), nothing has to be done IC has already the right values
            WRITE(6,*) "*** IC.nml namelist written. Starting with initial condition in IC.nml !***"
