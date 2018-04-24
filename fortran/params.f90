@@ -82,6 +82,7 @@ MODULE params
   
   REAL(KIND=8) :: coupling_thermo
   REAL(KIND=8) :: coupling_motion
+  INTEGER :: uncoupled
 
   INTEGER :: nboc   !< Number of atmospheric blocks
   INTEGER :: nbatm  !< Number of oceanic blocks
@@ -108,7 +109,7 @@ CONTAINS
     NAMELIST /toparams/ Go,Co,To0
     NAMELIST /taparams/ Ga,Ca,epsa,Ta0
     NAMELIST /otparams/ sc,lambda,RR,sB
-    NAMELIST /cparams/  coupling_thermo, coupling_motion
+    NAMELIST /cparams/  coupling_thermo, coupling_motion, uncoupled
 
     NAMELIST /modeselection/ oms,ams
     NAMELIST /numblocs/ nboc,nbatm
@@ -177,7 +178,13 @@ CONTAINS
     s=shape(oms)
     noc=s(1)
 
-    ndim=2*natm+2*noc
+    IF (uncoupled == 0) THEN
+       ndim=2*natm+2*noc
+    ELSE IF (uncoupled == 1) THEN
+       ndim=4*natm+2*noc
+    ELSE IF (uncoupled == 2) THEN
+       ndim=2*natm+4*noc
+    END IF
 
     !---------------------------------------------------------!
     !                                                         !

@@ -27,6 +27,7 @@ MODULE aotensor_def
   !-----------------------------------------------------!
 
   USE params
+
   USE inprod_analytic
   USE tensor, only:coolist,simplify
   IMPLICIT NONE
@@ -82,6 +83,26 @@ CONTAINS
     INTEGER :: i,T
     T = i + 2 * natm + noc
   END FUNCTION T
+
+  FUNCTION psi_u(i)
+    INTEGER :: i,psi_u
+    psi_u = i + 2*natm + 2*noc
+  END FUNCTION psi_u
+
+  FUNCTION theta_u(i)
+    INTEGER :: i,theta_u
+    theta_u = i + 3*natm + 2*noc
+  END FUNCTION theta_u
+
+  FUNCTION A_u(i)
+    INTEGER :: i,A_u
+    A_u = i + 2*natm + 2*noc
+  END FUNCTION A_u
+
+  FUNCTION T_u(i)
+    INTEGER :: i,T_u
+    T_u = i + 2*natm + 3*noc
+  END FUNCTION T_u
 
   !> Kronecker delta function
   FUNCTION kdelta(i,j)
@@ -187,6 +208,65 @@ CONTAINS
           END DO
        END DO
     END DO
+
+    ! Start uncoupled atmosphere
+    IF (uncoupled == 1) THEN
+        CALL func(theta_u(1),0,0,(Cpa / (1 - atmos%a(1,1) * sig0)))
+        DO i = 1, natm
+           DO j = 1, natm
+              CALL func(psi_u(i),psi_u(j),0,-(((atmos%c(i,j) * betp) / atmos%a(i,i))) -&
+                   &(kd * kdelta(i,j)) / 2 + atmos%a(i,j)*nuap)
+              CALL func(theta_u(i),psi_u(j),0,(atmos%a(i,j) * kd * sig0) / (-2 + 2 * atmos%a(i,i) * sig0))
+              CALL func(psi_u(i),theta_u(j),0,(kd * kdelta(i,j)) / 2)
+              CALL func(theta_u(i),theta_u(j),0,(-((sig0 * (2. * atmos%c(i,j) * betp +&
+                   & atmos%a(i,j) * (kd + 4. * kdp)))) + 2. * (LSBpa + sc * Lpa) &
+                   &* kdelta(i,j)) / (-2. + 2. * atmos%a(i,i) * sig0))
+              DO k = 1, natm
+                 CALL func(psi_u(i),psi_u(j),psi_u(k),-((atmos%b(i,j,k) / atmos%a(i,i))))
+                 CALL func(psi_u(i),theta_u(j),theta_u(k),-((atmos%b(i,j,k) / atmos%a(i,i))))
+                 CALL func(theta_u(i),psi_u(j),theta_u(k),(atmos%g(i,j,k) -&
+                      & atmos%b(i,j,k) * sig0) / (-1 + atmos%a(i,i) *&
+                      & sig0))
+                 CALL func(theta_u(i),theta_u(j),psi_u(k),(atmos%b(i,j,k) * sig0) / (1 - atmos%a(i,i) * sig0))
+              END DO
+           END DO
+           DO j = 1, noc
+              CALL func(psi_u(i),A(j),0,kd * atmos%d(i,j) / (2 * atmos%a(i,i)))
+              CALL func(theta_u(i),A(j),0,kd * (atmos%d(i,j) * sig0) / (2 - 2 * atmos%a(i,i) * sig0))
+              CALL func(theta_u(i),T(j),0,atmos%s(i,j) * (2 * LSBpo + Lpa) / (2 - 2 * atmos%a(i,i) * sig0))
+           END DO
+        END DO
+    END IF
+
+    ! Start uncoupled ocean
+    IF (uncoupled == 2) THEN
+        DO i = 1, noc
+           DO j = 1, natm
+              CALL func(A_u(i),psi(j),0,ocean%K(i,j) * dp / (ocean%M(i,i) + G))
+              CALL func(A_u(i),theta(j),0,-(ocean%K(i,j)) * dp / (ocean%M(i,i) + G))
+           END DO
+           DO j = 1, noc
+              CALL func(A_u(i),A_u(j),0,-((ocean%N(i,j) * betp + ocean%M(i,i) * (rp + dp) * kdelta(i,j)&
+                   & - ocean%M(i,j)**2*nuop)) / (ocean%M(i,i) + G))
+              DO k = 1, noc
+                 CALL func(A_u(i),A_u(j),A_u(k),-(ocean%C(i,j,k)) / (ocean%M(i,i) + G))
+              END DO
+           END DO
+        END DO
+        DO i = 1, noc
+           CALL func(T_u(i),0,0,Cpo * ocean%W(i,1))
+           DO j = 1, natm
+              CALL func(T_u(i),theta(j),0,ocean%W(i,j) * (2 * sc * Lpo + sBpa))
+           END DO
+           DO j = 1, noc
+              CALL func(T_u(i),T_u(j),0,-((Lpo + sBpo)) * kdelta(i,j))
+              DO k = 1, noc
+                 CALL func(T_u(i),A_u(j),T_u(k),-(ocean%O(i,j,k)))
+              END DO
+           END DO
+        END DO
+    END IF
+
   END SUBROUTINE compute_aotensor
 
   !-----------------------------------------------------!
