@@ -97,6 +97,86 @@ MODULE params
 
 CONTAINS
 
+  !> copied from python version.
+  !> generate AMS or OMS
+  SUBROUTINE get_modes(nxmax,nymax,res)
+    IMPLICIT NONE
+
+    INTEGER,INTENT(IN) :: nxmax, nymax
+    INTEGER,ALLOCATABLE :: res(:,:)
+
+    INTEGER :: i, ix, iy
+
+    ALLOCATE(res(nxmax*nymax,2))
+    i = 0
+    do ix = 1, nxmax
+       do iy = 1, nymax
+          i = i + 1
+          res(i,1) = ix
+          res(i,2) = iy
+       enddo
+    enddo
+
+  ENDSUBROUTINE
+
+
+  SUBROUTINE fstrout(nxa,nya,nxo,nyo,cout)  
+    IMPLICIT NONE
+
+    INTEGER,INTENT(IN) :: nxa, nya, nxo, nyo
+    CHARACTER(*),INTENT(INOUT) :: cout
+    ! .ATMS002x002_OCN002x004
+    write(cout,"(A,I3.3,A,I3.3,A,I3.3,A,I3.3)") "ATMS",nxa,"x",nya,"_OCN",nxo,"x",nyo
+
+  ENDSUBROUTINE
+
+
+  !< explicitly calculate resoluation-related vars
+  !< CDA
+  SUBROUTINE init_res(nxa,nya,nxo,nyo,lout)
+    IMPLICIT NONE
+    
+    INTEGER,INTENT(IN) :: nxa, nya, nxo, nyo
+    LOGICAL,OPTIONAL,INTENT(IN) :: lout
+
+    CHARACTER(80) :: cout
+    INTEGER :: i
+
+    NAMELIST /modeselection/ oms,ams
+    NAMELIST /numblocs/ nboc,nbatm
+    NAMELIST /res/ nxa, nya, nxo, nyo
+
+    nboc  = nxo * nyo
+    nbatm = nxa * nya
+    !ALLOCATE(oms(nboc,2),ams(nbatm,2), STAT=AllocStat)
+    !IF (AllocStat /= 0) STOP "*** Not enough memory ! ***"
+    call get_modes(nxa,nya,ams)
+    call get_modes(nxo,nyo,oms)
+    IF (ANY(shape(ams)/=(/nbatm,2/)) ) STOP "*** Error of AMS shape"
+    IF (ANY(shape(oms)/=(/nboc,2/)) ) STOP "*** Error of OMS shape"
+    
+    !write(*,*) "nboc=", nboc
+    !write(*,*) "nbatm=", nbatm
+    !do i = 1, nbatm
+    !   write(*,*) "AMS(",i, ",1:2)=",ams(i,1:2)
+    !enddo
+    !do i = 1, nboc
+    !   write(*,*) "OMS(",i, ",1:2)=",oms(i,1:2)
+    !enddo
+
+    IF (PRESENT(lout).and.lout) THEN
+       CALL fstrout(nxa,nya,nxo,nyo,cout)
+       cout="mode."//TRIM(cout)//".nml"
+       WRITE(*,*) "/modeselection/ & /numblocs/ written into file:", TRIM(cout)
+       OPEN(18,FILE=TRIM(cout),ACTION="write")
+       WRITE(18,NML=res)
+       WRITE(18,NML=numblocs)
+       WRITE(18,NML=modeselection)
+       CLOSE(18)
+    ENDIF
+
+  ENDSUBROUTINE init_res
+
 
   !> Read the basic parameters and mode selection from the namelist.
   SUBROUTINE init_nml(sim_id)
@@ -137,7 +217,7 @@ CONTAINS
     READ(8,nml=numblocs)
 
     ALLOCATE(oms(nboc,2),ams(nbatm,2), STAT=AllocStat)
-    IF (AllocStat /= 0) STOP "*** Not enough memory ! ***"
+    !    IF (AllocStat /= 0) STOP "*** Not enough memory ! ***"
 
     READ(8,nml=modeselection)
     CLOSE(8)

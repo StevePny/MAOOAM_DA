@@ -23,18 +23,27 @@ PROGRAM maooam_lyap
       benettin_step_atm,benettin_step_ocn
   USE stat
   USE lyap_stat
+  use m_maooam, only: get_res_maooam, init_maooam
+  use m_io,        only : daio
   IMPLICIT NONE
 
   REAL(KIND=8), DIMENSION(:), ALLOCATABLE :: X, X_atm, X_ocn          !< State variable in the model
   REAL(KIND=8), DIMENSION(:), ALLOCATABLE :: Xnew, Xnew_atm, Xnew_ocn       !< Updated state variable
   REAL(KIND=8), DIMENSION(:,:), ALLOCATABLE :: prop_buf, prop_buf_atm, prop_buf_ocn !< Buffer for the propagator
+  real(8),allocatable :: Pb(:,:), Pbatm(:,:), Pbocn(:,:)
+  real(8),allocatable :: Rinv(:, :), R(:), eye(:, :), KH_atm(:, :), KH_ocn(:, :)
   REAL(KIND=8) :: t=0.D0                                !< Time variable
   REAL(KIND=8) :: t_up, gasdev
   INTEGER :: IndexBen,WRSTAT
   CHARACTER(LEN=19) :: FMTX
-  CHARACTER(LEN=3) :: sim_id
+!  CHARACTER(LEN=3) :: sim_id
   INTEGER :: idum1
-  INTEGER :: j
+  INTEGER :: j, k, n
+
+  integer :: nxa, nya, nxo, nyo
+
+!  call get_res_maooam(nxa,nya,nxo,nyo)
+!  call init_maooam(nxa,nya,nxo,nyo,ndim)
 
   idum1=-1254
 
@@ -42,9 +51,9 @@ PROGRAM maooam_lyap
   PRINT*, '      - with computation of the Lyapunov spectrum'
   PRINT*, 'Loading information...'
 
-  CALL get_command_argument(1, sim_id)
+!  CALL get_command_argument(1, sim_id)
 
-  CALL init_aotensor(sim_id)    ! Compute the tensors
+  CALL init_aotensor!(sim_id)    ! Compute the tensors
   CALL init_tltensor
   CALL load_IC          ! Load the initial condition
 
@@ -57,15 +66,51 @@ PROGRAM maooam_lyap
   t_up=dt/t_trans*100.D0
 
   IF (writeout) THEN
-     OPEN(10,file='evol_field_' // sim_id // '.dat')
-     OPEN(11,file='lyapunov_exponents_both_' // sim_id // '.dat',status='replace',form='UNFORMATTED',access='DIRECT',recl=8*ndim)
-     OPEN(14,file='lyapunov_exponents_atm_' // sim_id // '.dat',status='replace',form='UNFORMATTED',access='DIRECT',recl=8*ndim)
-     OPEN(15,file='lyapunov_exponents_ocn_' // sim_id // '.dat',status='replace',form='UNFORMATTED',access='DIRECT',recl=8*ndim)
+     OPEN(10,file='evol_field.dat')
+     OPEN(11,file='lyapunov_exponents_both_3D.dat',status='replace',form='UNFORMATTED',access='DIRECT',recl=8*ndim)
+     OPEN(14,file='lyapunov_exponents_atm_3D.dat',status='replace',form='UNFORMATTED',access='DIRECT',recl=8*ndim)
+     OPEN(15,file='lyapunov_exponents_ocn_3D.dat',status='replace',form='UNFORMATTED',access='DIRECT',recl=8*ndim)
   END IF
 
   ALLOCATE(X(0:ndim),Xnew(0:ndim),X_atm(0:ndim),Xnew_atm(0:ndim),&
       X_ocn(0:ndim),Xnew_ocn(0:ndim),prop_buf(ndim,ndim),&
       prop_buf_atm(ndim,ndim),prop_buf_ocn(ndim,ndim))
+  allocate(Pb(ndim,ndim))
+  allocate(Pbatm(2*natm,2*natm))
+  allocate(Pbocn(2*noc,2*noc))
+  allocate(R(ndim))
+  allocate(Rinv(ndim, ndim))
+  allocate(eye(ndim, ndim))
+  allocate(KH_atm(2*natm, 2*natm))
+  allocate(KH_ocn(2*noc, 2*noc))
+
+
+  ! load Pb
+  do k = 1, ndim
+     read(daio%B,"(10000(D24.17,1x))") (Pb(k,n),n=1,ndim)
+  enddo
+  Pb = Pb*100.d0
+  Pbatm(1:2*natm,1:2*natm) = Pb(1:2*natm,1:2*natm)
+  Pbocn(1:2*noc,1:2*noc) = Pb(1+2*natm:ndim,1+2*natm:ndim)
+
+  ! load R
+  Rinv = 0.D0
+  eye = 0.D0
+  do n = 1, ndim
+     read(daio%R,"(10000(D24.17,1x))") R(n)
+     Rinv(n, n) = 1/R(n)
+     eye(n, n) = 1.D0
+     print*, "n, R(n)=", n, Rinv(n, n)
+  enddo
+
+  KH_atm = Rinv(1:2*natm,1:2*natm) + inv(Pbatm)
+  KH_atm = inv(KH_atm)
+  KH_atm = MATMUL(KH_atm, Rinv(1:2*natm,1:2*natm))
+
+  KH_ocn = Rinv(1+2*natm:ndim,1+2*natm:ndim) + inv(Pbocn)
+  KH_ocn = inv(KH_ocn)
+  KH_ocn = MATMUL(KH_ocn, Rinv(1+2*natm:ndim,1+2*natm:ndim))
+
   X = IC
 
   X_atm = IC
@@ -124,6 +169,10 @@ PROGRAM maooam_lyap
      X=Xnew
 
      IF (mod(t,rescaling_time)<dt) THEN
+        ! Multiply Kalman gain
+        CALL multiply_prop_atm(eye(1:2*natm,1:2*natm) - KH_atm)
+        CALL multiply_prop_ocn(eye(1+2*natm:ndim,1+2*natm:ndim) - KH_ocn)
+
         CALL  benettin_step ! Performs QR step with prop
         CALL lyap_acc(loclyap)
 
@@ -151,19 +200,19 @@ PROGRAM maooam_lyap
   IF (writeout) CLOSE(15)
 
   IF (writeout) THEN
-     OPEN(10,file='mean_lyapunov_both_' // sim_id // '.dat')
+     OPEN(10,file='mean_lyapunov_both_3D.dat')
      lyapunov=lyap_mean()
      WRITE(10,*) 'mean',lyapunov(1:ndim)
      lyapunov=lyap_var()
      WRITE(10,*) 'var',lyapunov(1:ndim)
      CLOSE(10)
-     OPEN(12,file='mean_lyapunov_atm_' // sim_id // '.dat')
+     OPEN(12,file='mean_lyapunov_atm_3D.dat')
      lyapunov_atm=lyap_mean_atm()
      WRITE(12,*) 'mean',lyapunov_atm(1:ndim)
      lyapunov_atm=lyap_var_atm()
      WRITE(12,*) 'var',lyapunov_atm(1:ndim)
      CLOSE(12)
-     OPEN(13,file='mean_lyapunov_ocn_' // sim_id // '.dat')
+     OPEN(13,file='mean_lyapunov_ocn_3D.dat')
      lyapunov_ocn=lyap_mean_ocn()
      WRITE(13,*) 'mean',lyapunov_ocn(1:ndim)
      lyapunov_ocn=lyap_var_ocn()
@@ -177,5 +226,40 @@ PROGRAM maooam_lyap
      X=var()
      WRITE(10,*) 'var',X(1:ndim)
   END IF
+
+  contains
+
+function inv(A) result(Ainv)
+  real(8), dimension(:,:), intent(in) :: A
+  real(8), dimension(size(A,1),size(A,2)) :: Ainv
+
+  real(8), dimension(size(A,1)) :: work  ! work array for LAPACK
+  integer, dimension(size(A,1)) :: ipiv   ! pivot indices
+  integer :: n, info
+
+  ! External procedures defined in LAPACK
+  external DGETRF
+  external DGETRI
+
+  ! Store A in Ainv to prevent it from being overwritten by LAPACK
+  Ainv = A
+  n = size(A,1)
+
+  ! DGETRF computes an LU factorization of a general M-by-N matrix A
+  ! using partial pivoting with row interchanges.
+  call DGETRF(n, n, Ainv, n, ipiv, info)
+
+  if (info /= 0) then
+     stop 'Matrix is numerically singular!'
+  end if
+
+  ! DGETRI computes the inverse of a matrix using the LU factorization
+  ! computed by DGETRF.
+  call DGETRI(n, Ainv, n, ipiv, work, n, info)
+
+  if (info /= 0) then
+     stop 'Matrix inversion failed!'
+  end if
+end function inv
 
 END PROGRAM maooam_lyap

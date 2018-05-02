@@ -1,4 +1,4 @@
-
+COMPILER=ifort
 ifndef COMPILER
   COMPILER=gfortran
 endif
@@ -17,13 +17,14 @@ ifdef RES
 endif
 # Define relevant compiler options for debug case and normal case for each compiler
 # Normal Case:
-IFORT_COMPILER_FLAGS = -assume byterecl -O2
-IFORT_LD_FLAGS = -mkl
+IFORT_COMPILER_FLAGS = -assume byterecl -O2 -traceback -heap-arrays 65532
+IFORT_LD_FLAGS = -mkl=parallel 
 GCC_COMPILER_FLAGS = -O2 -Wall
 GCC_LD_FLAGS = -L${LAPACKLIB} -llapack -lblas
 # Debug Case:
-IFORT_COMPILER_FLAGS_DBG = -O0 -check all -traceback -fpe0 -check bounds -debug all -check uninit -ftrapuv -assume byterecl
-IFORT_LD_FLAGS_DBG = -llapack -lblas
+IFORT_COMPILER_FLAGS_DBG = -g -O0 -traceback -fpe0 -check bounds -debug all -ftrapuv -assume byterecl
+#IFORT_LD_FLAGS_DBG = -llapack -lblas
+IFORT_LD_FLAGS_DBG = -mkl=sequential
 GCC_COMPILER_FLAGS_DBG = -g -O0 -fbounds-check -Wall -Wextra -Wconversion -pedantic -ffpe-trap=zero,overflow,underflow 
 GCC_LD_FLAGS_DBG = -L${LAPACKLIB} -llapack -lblas
 
@@ -68,10 +69,10 @@ endif
 .SUFFIXES:
 .SUFFIXES: .f90 .o .mod .out .test
 
-PROGRAMS = maooam_lyap maooam_lyap_uncoupled maooam_lyap_uncoupled_stochastic maooam test_tl_ad maooam_lyap maooam_lyap_div tr_jacob_mat
+PROGRAMS = maooam_lyap maooam_lyap_uncoupled maooam_lyap_uncoupled_stochastic maooam test_tl_ad maooam_lyap maooam_lyap_div tr_jacob_mat clim_maooam freerun_maooam etkf_maooam genpb_ens maooam_lyap_uncoupled_DA
 
-MODULES = util.mod params.mod inprod_analytic$(ST).mod aotensor_def.mod ic_def.mod $(INTEGRATOR).mod stat.mod tensor.mod tl_ad_tensor.mod $(TL_AD_INTEGRATOR).mod icdelta_def.mod lyap_vectors.mod lyap_stat.mod 
-MODULE_OBJECTS = $(MODULES:.mod=.o)
+MODULES = m_io.mod mod_optimization.mod m_mt.mod m_da_maooam.mod util.mod params.mod inprod_analytic$(ST).mod aotensor_def.mod ic_def.mod $(INTEGRATOR).mod stat.mod tensor.mod tl_ad_tensor.mod $(TL_AD_INTEGRATOR).mod icdelta_def.mod lyap_vectors.mod lyap_stat.mod m_maooam.mod
+MODULE_OBJECTS = lbfgs.o $(MODULES:.mod=.o)
 
 TEST_PROGRAMS = test_inprod_analytic test_aotensor
 TESTS = $(TEST_PROGRAMS:=.test)
@@ -96,12 +97,17 @@ test_aotensor.test: test_aotensor
 
 %.mod: %.f90
 	$(COMPILER) $(COMPILER_FLAGS) $(LD_FLAGS) -c $<
+
 %.o: %.f90 $(MODULES)
+	$(COMPILER) $(COMPILER_FLAGS) $(LD_FLAGS) -c $<
+
+%.o: %.f $(MODULES)
 	$(COMPILER) $(COMPILER_FLAGS) $(LD_FLAGS) -c $<
 
 %: %.o $(MODULE_OBJECTS)
 	$(COMPILER) $(COMPILER_FLAGS) $(LD_FLAGS) $^ -o $@
 
+m_maooam.mod: m_maooam.mod
 inprod_analytic$(ST).mod: params.mod util.mod
 aotensor_def.mod: tensor.mod inprod_analytic$(ST).mod
 $(INTEGRATOR).mod: aotensor_def.mod
@@ -111,6 +117,10 @@ tl_ad_tensor.mod: aotensor_def.mod
 lyap_vectors.mod: params.mod
 $(TL_AD_INTEGRATOR).mod: tl_ad_tensor.mod
 util.mod: $(IFPORT)
+m_da_maooam.mod: m_da_maooam.mod
+m_mt.mod: m_mt.mod
+m_io.mod: m_io.mod
+mod_optimization.mod: lbfgs.o mod_optimization.f90
 
 clean:
 	$(RM) *.o *.mod $(PROGRAMS) $(TEST_PROGRAMS) tests/*.out
