@@ -89,7 +89,6 @@ PROGRAM maooam_lyap
   do k = 1, ndim
      read(daio%B,"(10000(D24.17,1x))") (Pb(k,n),n=1,ndim)
   enddo
-  Pb = Pb*100.d0
   Pbatm(1:2*natm,1:2*natm) = Pb(1:2*natm,1:2*natm)
   Pbocn(1:2*noc,1:2*noc) = Pb(1+2*natm:ndim,1+2*natm:ndim)
 
