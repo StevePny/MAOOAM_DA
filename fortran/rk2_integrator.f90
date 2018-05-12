@@ -17,7 +17,7 @@
 !---------------------------------------------------------------------------
 
 MODULE integrator
-  USE params, only: ndim
+  USE params, only: ndim, natm, noc
   USE tensor, only:sparse_mul3
   USE aotensor_def, only: aotensor
   IMPLICIT NONE
@@ -57,14 +57,21 @@ CONTAINS
   !> @param t Actual integration time
   !> @param dt Integration timestep.
   !> @param res Final point after the step.
-  SUBROUTINE step(y,t,dt,res)
+  SUBROUTINE step(y,t,dt,res,component)
     REAL(KIND=8), DIMENSION(0:ndim), INTENT(IN) :: y
     REAL(KIND=8), INTENT(INOUT) :: t
     REAL(KIND=8), INTENT(IN) :: dt
     REAL(KIND=8), DIMENSION(0:ndim), INTENT(OUT) :: res
-    
+    CHARACTER*3, OPTIONAL, INTENT(IN) :: component
     CALL tendencies(t,y,buf_f0)
     buf_y1 = y+dt*buf_f0
+    if (present(component)) then
+        if (component == 'atm') then
+            buf_y1(1+2*natm:ndim) = y(1+2*natm:ndim)
+        else if (component == 'ocn') then
+            buf_y1(1:2*natm) = y(1:2*natm)
+        end if
+    end if
     CALL tendencies(t+dt,buf_y1,buf_f1)
     res=y+0.5*(buf_f0+buf_f1)*dt
     t=t+dt

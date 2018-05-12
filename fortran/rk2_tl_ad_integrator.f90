@@ -22,7 +22,7 @@
 MODULE tl_ad_integrator
 
   USE util, only: init_one
-  USE params, only: ndim
+  USE params, only: ndim, natm, noc
   USE tensor, only: sparse_mul3
   USE aotensor_def, only: aotensor
 
@@ -189,24 +189,40 @@ CONTAINS
   !> @param dt Integration timestep.
   !> @param ynew Model variable at time t+dt
   !> @param adjoint If true, compute the propagator of the adjoint model (AD) instead of the tangent one (TL)
-  SUBROUTINE prop_step(y,propagator,t,dt,ynew,adjoint)
+  SUBROUTINE prop_step(y,propagator,t,dt,ynew,adjoint,component)
     REAL(KIND=8), INTENT(INOUT) :: t
     REAL(KIND=8), INTENT(IN) :: dt
     REAL(KIND=8), DIMENSION(0:ndim), INTENT(IN) :: y
     LOGICAL, INTENT(IN) :: adjoint
     REAL(KIND=8), DIMENSION(ndim,ndim), INTENT(OUT) :: propagator
     REAL(KIND=8), DIMENSION(0:ndim), INTENT(OUT) :: ynew
+    CHARACTER*3, OPTIONAL, INTENT(IN) :: component
  
     CALL tendencies(t,y,buf_f0)
     buf_j1=jacobian_mat(y)
 
     buf_y1 = y + dt*buf_f0
 
+    if (present(component)) then
+        if (component == 'atm') then
+            buf_y1(1+2*natm:ndim) = y(1+2*natm:ndim)
+        else if (component == 'ocn') then
+            buf_y1(1:2*natm) = y(1:2*natm)
+        end if
+    end if
     CALL tendencies(t+dt,buf_y1,buf_f1)
     buf_j2=jacobian_mat(buf_y1)
     
     buf_j1h=buf_j1
     buf_j2h=buf_j2
+    if (present(component)) then
+        if (component == 'atm') then
+            buf_j1h(1+2*natm:ndim, 1+2*natm:ndim) = 0.D0
+        else if (component == 'ocn') then
+            buf_j2h(1:2*natm, 1:2*natm) = 0.D0
+        end if
+    end if
+
     CALL dgemm ('n', 'n', ndim, ndim, ndim, dt, buf_j2, ndim,buf_j1h, ndim,1.0d0, buf_j2h, ndim)
      
     ynew=y  + dt/2.0d0*(buf_f0 + buf_f1)
