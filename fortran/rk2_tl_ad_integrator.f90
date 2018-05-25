@@ -218,7 +218,9 @@ CONTAINS
     if (present(component)) then
         if (component == 'atm') then
             buf_j1h(1+2*natm:ndim, 1+2*natm:ndim) = 0.D0
+            buf_j2h(1+2*natm:ndim, 1+2*natm:ndim) = 0.D0
         else if (component == 'ocn') then
+            buf_j1h(1:2*natm, 1:2*natm) = 0.D0
             buf_j2h(1:2*natm, 1:2*natm) = 0.D0
         end if
     end if
